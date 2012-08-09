@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+	<string name="app_name">Celestia Radio</string>
+	<string name="logo">Logo</string>
+	<string name="toggle">Toggle Start and Stop</string>
+	<string name="address">http://molestia.ponify.me:8062</string>
+	<string name="artist">Artist:</string>
+	<string name="title">Title:</string>
+	<string name="stats">http://ponify.me/stats.php</string>
+	<string name="background">Molestia sees all!</string>
+	<string name="website">http://ponify.me/</string>
+
+</resources>
