@@ -12,6 +12,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.TaskStackBuilder;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.media.AudioManager;
@@ -20,6 +24,7 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
@@ -27,7 +32,6 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 /**
  * Celestia Radio Main Activity
  * @author Landon "Karai" Manning
@@ -40,7 +44,12 @@ public class MainActivity extends Activity {
     private ImageView logo;							// Company logo
     private TextView artist, title, serverTitle;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
-	
+    
+    private NotificationCompat.Builder notificationBuilder = null;
+    private NotificationManager mNotificationManager;
+    private int NotificationId = 123454321;
+	private boolean isPlaying;
+	private boolean isPlayerLoaded;
 	/**
 	 * Create Activity
 	 */
@@ -48,6 +57,7 @@ public class MainActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         
+        MakeNotification();
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
@@ -60,7 +70,7 @@ public class MainActivity extends Activity {
         this.title			= (TextView) findViewById(R.id.title);
         this.serverTitle	= (TextView) findViewById(R.id.serverTitle);
         this.togglePlay		= (ImageButton) findViewById(R.id.togglePlay);
-        
+
         //-- Make Links Clickable --
         this.artist.setMovementMethod(LinkMovementMethod.getInstance());
         this.title.setMovementMethod(LinkMovementMethod.getInstance());
@@ -99,7 +109,32 @@ public class MainActivity extends Activity {
 		});
     }
 	
-    /**
+    public void UpdateNotification()
+    {
+    	if(notificationBuilder == null)
+    	{
+    		MakeNotification();
+    	}
+    	notificationBuilder.setContentTitle(title.getText().toString());
+    	notificationBuilder.setContentText(artist.getText().toString());
+		mNotificationManager.notify(NotificationId, notificationBuilder.build());
+    }
+    
+    private void ClearNotification()
+    {
+    	mNotificationManager.cancel(NotificationId);	
+    }
+    
+    private void MakeNotification() {
+		 notificationBuilder =
+		        new NotificationCompat.Builder(this)
+		        .setSmallIcon(R.drawable.ic_launcher);
+	    mNotificationManager =
+		    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationBuilder.setOngoing(true);	
+	}
+
+	/**
      * Change Configuration
      */
 	@Override
@@ -126,12 +161,23 @@ public class MainActivity extends Activity {
 	private void togglePlay() {
 		try {
 			if (!this.player.isPlaying()) {
-		    	this.player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-				this.player.setDataSource(getString(R.string.address));
-				this.player.prepareAsync();
+				isPlaying = true;
+				if(!isPlayerLoaded)
+				{
+			    	this.player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+					this.player.setDataSource(getString(R.string.address));
+					this.player.prepareAsync();
+					isPlayerLoaded = true;
+				}
+				this.player.start();
+				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
+				UpdateNotification();
 			} else {
-				this.player.reset();
+				isPlaying = false;
+				this.player.pause();
+				//this.player.reset();
 				this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.play));
+				ClearNotification();
 			}
 		} catch (IllegalArgumentException e) {
 			Log.e("ERROR: togglePlay", "Invalid data source!");
@@ -192,6 +238,8 @@ public class MainActivity extends Activity {
 			this.serverTitle.setText(currentListeners + " ponies tuned in to " + serverTitle + "!");
 			this.artist.setText(Html.fromHtml(songHistory[0][1] + songHistory[0][2]));
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
+			if(isPlaying)
+				UpdateNotification();
 		} catch (JSONException e) {
 			Log.e("ERROR: setMeta", "Error parsing JSON!");
 			e.printStackTrace();
@@ -256,10 +304,12 @@ public class MainActivity extends Activity {
 			try {
 				JSONObject json = new JSONObject(values[0].toString());
 				MainActivity.this.setMeta(json);
+				
 			} catch (JSONException e) {
   				Log.e("ERROR: onProgressUpdate", "Error parsing JSON!");
 				e.printStackTrace();
 			}
 		}
+		
 	}
 }
