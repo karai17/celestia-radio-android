@@ -191,13 +191,13 @@ public class MainActivity extends Activity {
 				this.player.prepareAsync();
 				isPlayerLoaded = true;
 				this.player.start();
-				MainActivity.this.togglePlay.setBackground(getResources().getDrawable(R.drawable.stop));
+				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
 				UpdateNotification();
 			} else {
 				isPlaying = false;
 				//this.player.pause();
 				this.player.reset();
-				this.togglePlay.setBackground(getResources().getDrawable(R.drawable.play));
+				this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.play));
 				ClearNotification();
 			}
 		} catch (IllegalArgumentException e) {
