@@ -6,12 +6,14 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
 import android.media.AudioManager;
@@ -20,6 +22,8 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
@@ -40,6 +44,11 @@ public class MainActivity extends Activity {
     private ImageView logo;							// Company logo
     private TextView artist, title, serverTitle;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
+    
+    private NotificationCompat.Builder notificationBuilder = null;
+    private NotificationManager mNotificationManager;
+    private int NotificationId = 123454321;
+	private boolean isPlaying;
 	
 	/**
 	 * Create Activity
@@ -47,6 +56,8 @@ public class MainActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        
+        MakeNotification();
         
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
@@ -60,7 +71,7 @@ public class MainActivity extends Activity {
         this.title			= (TextView) findViewById(R.id.title);
         this.serverTitle	= (TextView) findViewById(R.id.serverTitle);
         this.togglePlay		= (ImageButton) findViewById(R.id.togglePlay);
-        
+
         //-- Make Links Clickable --
         this.artist.setMovementMethod(LinkMovementMethod.getInstance());
         this.title.setMovementMethod(LinkMovementMethod.getInstance());
@@ -74,6 +85,7 @@ public class MainActivity extends Activity {
         
     	//-- Prepare MediaPlayer --
         this.player.setOnPreparedListener(new OnPreparedListener() {
+			@SuppressWarnings("deprecation")
 			public void onPrepared(MediaPlayer mp) {
 				mp.start();
 				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
@@ -99,7 +111,43 @@ public class MainActivity extends Activity {
 		});
     }
 	
-    /**
+    public void UpdateNotification()
+    {
+    	if(notificationBuilder == null)
+    	{
+    		MakeNotification();
+    	}
+    	notificationBuilder.setContentTitle(title.getText().toString());
+    	notificationBuilder.setContentText(artist.getText().toString());
+		mNotificationManager.notify(NotificationId, notificationBuilder.build());
+    }
+    
+    private void ClearNotification()
+    {
+    	mNotificationManager.cancel(NotificationId);	
+    }
+    
+    private void MakeNotification() {
+		notificationBuilder =
+				new NotificationCompat.Builder(this)
+				.setSmallIcon(R.drawable.ic_launcher);
+		Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
+		TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
+		// Adds the Intent that starts the Activity to the top of the stack
+		stackBuilder.addNextIntent(notificationIntent);
+		PendingIntent resultPendingIntent =
+		        stackBuilder.getPendingIntent(
+		            0,
+		            PendingIntent.FLAG_UPDATE_CURRENT
+		        );
+		notificationBuilder.setContentIntent(resultPendingIntent);
+
+	    mNotificationManager =
+		    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		notificationBuilder.setOngoing(true);	
+	}
+
+	/**
      * Change Configuration
      */
 	@Override
@@ -116,22 +164,37 @@ public class MainActivity extends Activity {
 		
 		if(isFinishing()) {
 			this.metaTask.stop();
+			this.ClearNotification();
 			this.player.release();
 		}
+	}
+	@Override
+	protected void onDestroy()
+	{
+		super.onDestroy();
+		this.ClearNotification();
 	}
 	
 	/**
 	 * Toggle Play Button
 	 */
+	@SuppressWarnings("deprecation")
 	private void togglePlay() {
 		try {
 			if (!this.player.isPlaying()) {
+				isPlaying = true;
 		    	this.player.setAudioStreamType(AudioManager.STREAM_MUSIC);
 				this.player.setDataSource(getString(R.string.address));
 				this.player.prepareAsync();
+				this.player.start();
+				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
+				UpdateNotification();
 			} else {
+				isPlaying = false;
+				//this.player.pause();
 				this.player.reset();
 				this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.play));
+				ClearNotification();
 			}
 		} catch (IllegalArgumentException e) {
 			Log.e("ERROR: togglePlay", "Invalid data source!");
@@ -192,6 +255,8 @@ public class MainActivity extends Activity {
 			this.serverTitle.setText(currentListeners + " ponies tuned in to " + serverTitle + "!");
 			this.artist.setText(Html.fromHtml(songHistory[0][1] + songHistory[0][2]));
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
+			if(isPlaying)
+				UpdateNotification();
 		} catch (JSONException e) {
 			Log.e("ERROR: setMeta", "Error parsing JSON!");
 			e.printStackTrace();
@@ -256,10 +321,12 @@ public class MainActivity extends Activity {
 			try {
 				JSONObject json = new JSONObject(values[0].toString());
 				MainActivity.this.setMeta(json);
+				
 			} catch (JSONException e) {
   				Log.e("ERROR: onProgressUpdate", "Error parsing JSON!");
 				e.printStackTrace();
 			}
 		}
+		
 	}
 }
