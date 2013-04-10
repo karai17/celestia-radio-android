@@ -6,12 +6,17 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.List;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RecentTaskInfo;
+import android.app.Notification;
+import android.app.Notification.Builder;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.TaskStackBuilder;
@@ -38,6 +43,9 @@ import android.widget.TextView;
  * @email LManning17@gmail.com
  *
  */
+
+
+
 public class MainActivity extends Activity {
     private MediaPlayer player;						// Media player
     private MetaTask metaTask;						// Async Task for continuous updating
@@ -45,7 +53,7 @@ public class MainActivity extends Activity {
     private TextView artist, title, serverTitle;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
     
-    private NotificationCompat.Builder notificationBuilder = null;
+    private Builder notificationBuilder = null;
     private NotificationManager mNotificationManager;
     private int NotificationId = 123454321;
 	private boolean isPlaying;
@@ -127,8 +135,19 @@ public class MainActivity extends Activity {
     
     private void MakeNotification() {
 		 notificationBuilder =
-		        new NotificationCompat.Builder(this)
+		        new Notification.Builder(this)
 		        .setSmallIcon(R.drawable.ic_launcher);
+		 Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
+		 TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
+		// Adds the Intent that starts the Activity to the top of the stack
+		stackBuilder.addNextIntent(notificationIntent);
+		PendingIntent resultPendingIntent =
+		        stackBuilder.getPendingIntent(
+		            0,
+		            PendingIntent.FLAG_UPDATE_CURRENT
+		        );
+		notificationBuilder.setContentIntent(resultPendingIntent);
+
 	    mNotificationManager =
 		    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 		notificationBuilder.setOngoing(true);	
@@ -151,8 +170,15 @@ public class MainActivity extends Activity {
 		
 		if(isFinishing()) {
 			this.metaTask.stop();
+			this.ClearNotification();
 			this.player.release();
 		}
+	}
+	@Override
+	protected void onDestroy()
+	{
+		super.onDestroy();
+		this.ClearNotification();
 	}
 	
 	/**
@@ -162,21 +188,18 @@ public class MainActivity extends Activity {
 		try {
 			if (!this.player.isPlaying()) {
 				isPlaying = true;
-				if(!isPlayerLoaded)
-				{
-			    	this.player.setAudioStreamType(AudioManager.STREAM_MUSIC);
-					this.player.setDataSource(getString(R.string.address));
-					this.player.prepareAsync();
-					isPlayerLoaded = true;
-				}
+		    	this.player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+				this.player.setDataSource(getString(R.string.address));
+				this.player.prepareAsync();
+				isPlayerLoaded = true;
 				this.player.start();
-				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
+				MainActivity.this.togglePlay.setBackground(getResources().getDrawable(R.drawable.stop));
 				UpdateNotification();
 			} else {
 				isPlaying = false;
-				this.player.pause();
-				//this.player.reset();
-				this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.play));
+				//this.player.pause();
+				this.player.reset();
+				this.togglePlay.setBackground(getResources().getDrawable(R.drawable.play));
 				ClearNotification();
 			}
 		} catch (IllegalArgumentException e) {
