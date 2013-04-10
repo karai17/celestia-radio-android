@@ -15,11 +15,8 @@ import org.json.JSONObject;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.RecentTaskInfo;
-import android.app.Notification;
-import android.app.Notification.Builder;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.app.TaskStackBuilder;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
@@ -30,6 +27,7 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.app.TaskStackBuilder;
 import android.text.Html;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
@@ -53,7 +51,7 @@ public class MainActivity extends Activity {
     private TextView artist, title, serverTitle;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
     
-    private Builder notificationBuilder = null;
+    private NotificationCompat.Builder notificationBuilder = null;
     private NotificationManager mNotificationManager;
     private int NotificationId = 123454321;
 	private boolean isPlaying;
@@ -135,7 +133,7 @@ public class MainActivity extends Activity {
     
     private void MakeNotification() {
 		 notificationBuilder =
-		        new Notification.Builder(this)
+		        new NotificationCompat.Builder(this)
 		        .setSmallIcon(R.drawable.ic_launcher);
 		 Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
 		 TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
