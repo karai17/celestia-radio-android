@@ -116,6 +116,7 @@
 			android:layout_margin="10dp"
 			android:background="@drawable/play"
 			android:contentDescription="@string/toggle" />
+
 	</LinearLayout>
 
 </FrameLayout>
