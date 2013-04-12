@@ -20,6 +20,7 @@ public final class R {
     public static final class id {
         public static final int artist=0x7f060002;
         public static final int logo=0x7f060000;
+        public static final int scheduleTable=0x7f060005;
         public static final int serverTitle=0x7f060001;
         public static final int title=0x7f060003;
         public static final int togglePlay=0x7f060004;

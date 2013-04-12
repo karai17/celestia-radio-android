@@ -6,7 +6,12 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -19,7 +24,9 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
@@ -29,12 +36,17 @@ import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.Html;
+import android.text.format.Time;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TableLayout;
+import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.TableRow.LayoutParams;
 /**
  * Celestia Radio Main Activity
  * @author Landon "Karai" Manning
@@ -64,10 +76,12 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         
         MakeNotification();
+        
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
-        
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        BuildScheduleTable();
         //-- Prepare Variables --
         this.player			= new MediaPlayer();
         this.metaTask		= new MetaTask();
@@ -256,7 +270,7 @@ public class MainActivity extends Activity {
 			}
 			
 			//-- Set Meta Data --
-			this.serverTitle.setText(currentListeners + " ponies tuned in to " + serverTitle + "!");
+			this.serverTitle.setText(currentListeners + " ponies tuned in!");
 			this.artist.setText(Html.fromHtml(songHistory[0][1] + songHistory[0][2]));
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
 			if(isPlaying)
@@ -265,6 +279,85 @@ public class MainActivity extends Activity {
 			Log.e("ERROR: setMeta", "Error parsing JSON!");
 			e.printStackTrace();
 		}
+	}
+	
+	private void BuildScheduleTable()
+	{
+		 TableLayout tl = (TableLayout)findViewById(R.id.scheduleTable);
+		 LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+		 TableRow trdays = new TableRow(this);
+	     TextView[] tvdays = new TextView[8];
+	     for(int i = 0; i < 8; i++)
+	     {
+	    	 tvdays[i] = new TextView(this);
+	    	 tvdays[i].setLayoutParams(lp);
+	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
+	     }
+	     Time t = new Time();
+	     t.timezone = "UTC";
+	     t.setToNow();
+	     String day = "";
+	     switch (t.weekDay) {
+         case 0:  day = "Sunday";
+                  break;
+         case 1:  day = "Monday";
+                  break;
+         case 2:  day = "Tuesday";
+                  break;
+         case 3:  day = "Wednesday";
+                  break;
+         case 4:  day = "Thursday";
+                  break;
+         case 5:  day = "Friday";
+                  break;
+         case 6:  day = "Saturday";
+                  break;
+	     }     
+	     tvdays[1].setText(day + ", " + t.hour + ":" + t.minute + " UTC");
+	     tvdays[1].setTextSize(30);
+	     tvdays[1].setGravity(Gravity.CENTER);
+	     //tvdays[2].setText("  TUESDAY  ");
+	     //tvdays[3].setText("  WEDNESDAY  ");
+	     //tvdays[4].setText("  THURSDAY  ");
+	     //tvdays[5].setText("  FRIDAY  ");
+	     //tvdays[6].setText("  SATURDAY  ");
+	     //tvdays[7].setText("  SUNDAY  ");
+	     for(int i = 0; i < 2; i++)
+	     {
+		     trdays.addView(tvdays[i]);
+	     }
+	     Schedule schedule = new Schedule();
+	     
+	     RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute(null);
+	     String jsonstr = "";
+		try {
+			jsonstr = scheduleGetter.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+	     schedule.ParseSchedule(day, jsonstr);
+	     tl.addView(trdays, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+		 for(int i = 5; i < 29; i++)
+		 {
+			 TableRow tr = new TableRow(this);
+		     TextView tvtime = new TextView(this);
+		     tvtime.setLayoutParams(lp);
+		     tvtime.setText(i%24 + ":00");
+		     tvtime.setTextColor(Color.parseColor("#ff8000"));
+		     tr.addView(tvtime);
+		     TextView tvEntry = new TextView(this);
+		     tvEntry.setLayoutParams(lp);
+		     tvEntry.setText(schedule.items[i%24]);
+		     tvEntry.setTextColor(Color.parseColor("#ff8000"));
+		     tr.addView(tvEntry);
+		     tl.addView(tr, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+		 } 
 	}
 	
 	/**
@@ -286,7 +379,6 @@ public class MainActivity extends Activity {
 	  	       		//-- Connect to and read Meta Data page --
 	  	       		URLConnection con = new URL(address[0]).openConnection();
 	  	       		Reader r = new InputStreamReader(con.getInputStream());
-	  	       		
 	  	       		//-- Build JSON String --
 	  	       		StringBuilder buffer = new StringBuilder();
 	  	       		int ch;
@@ -313,7 +405,7 @@ public class MainActivity extends Activity {
 	  				e.printStackTrace();
 				}
 			}
-			
+			BuildScheduleTable();
 			return null;
 		}
 		
