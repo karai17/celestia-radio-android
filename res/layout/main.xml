@@ -25,6 +25,7 @@
 			android:gravity="center"
 			android:src="@drawable/logo" />
 
+				
 		<TextView
 			android:id="@+id/serverTitle"
 			android:layout_width="fill_parent"
@@ -109,6 +110,8 @@
 
 		</LinearLayout>
 
+		
+
 		<ImageButton
 			android:id="@+id/togglePlay"
 			android:layout_width="65dp"
@@ -117,6 +120,18 @@
 			android:layout_margin="10dp"
 			android:background="@drawable/play"
 			android:contentDescription="@string/toggle" />
+
+		
+						<TextView
+		    android:id="@+id/timeanddate"
+		    android:layout_width="fill_parent"
+		    android:layout_height="wrap_content"
+		    android:gravity="center"
+		    android:textColor="#ff8000"
+		    android:textSize="30dp"
+		    android:text="CLOCK" />
+						
+						
 			<ScrollView
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"

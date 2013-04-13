@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     private MediaPlayer player;						// Media player
     private MetaTask metaTask;						// Async Task for continuous updating
     private ImageView logo;							// Company logo
-    private TextView artist, title, serverTitle;	// Artist & Title data
+    private TextView artist, title, serverTitle, timetv;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
     
     private NotificationCompat.Builder notificationBuilder = null;
@@ -68,6 +68,9 @@ public class MainActivity extends Activity {
     private int NotificationId = 123454321;
 	private boolean isPlaying;
 	private boolean isPlayerLoaded;
+	private Time t = new Time();
+	private String day = "Splorgday";
+
 	/**
 	 * Create Activity
 	 */
@@ -76,12 +79,11 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         
         MakeNotification();
-        
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         BuildScheduleTable();
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         //-- Prepare Variables --
         this.player			= new MediaPlayer();
         this.metaTask		= new MetaTask();
@@ -90,7 +92,7 @@ public class MainActivity extends Activity {
         this.title			= (TextView) findViewById(R.id.title);
         this.serverTitle	= (TextView) findViewById(R.id.serverTitle);
         this.togglePlay		= (ImageButton) findViewById(R.id.togglePlay);
-
+        timetv = (TextView) findViewById(R.id.timeanddate);
         //-- Make Links Clickable --
         this.artist.setMovementMethod(LinkMovementMethod.getInstance());
         this.title.setMovementMethod(LinkMovementMethod.getInstance());
@@ -102,6 +104,9 @@ public class MainActivity extends Activity {
     	//-- Prepare Meta Task --
     	this.metaTask.execute(getString(R.string.stats));
         
+        t.timezone = "UTC";
+        t.setToNow();
+    	
     	//-- Prepare MediaPlayer --
         this.player.setOnPreparedListener(new OnPreparedListener() {
 			public void onPrepared(MediaPlayer mp) {
@@ -273,6 +278,11 @@ public class MainActivity extends Activity {
 			this.serverTitle.setText(currentListeners + " ponies tuned in!");
 			this.artist.setText(Html.fromHtml(songHistory[0][1] + songHistory[0][2]));
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
+			
+			t.setToNow();
+			String timestr = day + ", " + String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
+			this.timetv.setText(timestr);
+			
 			if(isPlaying)
 				UpdateNotification();
 		} catch (JSONException e) {
@@ -293,10 +303,7 @@ public class MainActivity extends Activity {
 	    	 tvdays[i].setLayoutParams(lp);
 	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
 	     }
-	     Time t = new Time();
-	     t.timezone = "UTC";
-	     t.setToNow();
-	     String day = "";
+	     day = "";
 	     switch (t.weekDay) {
          case 0:  day = "Sunday";
                   break;
@@ -313,18 +320,19 @@ public class MainActivity extends Activity {
          case 6:  day = "Saturday";
                   break;
 	     }     
-	     tvdays[1].setText(day + ", " + t.hour + ":" + t.minute + " UTC");
-	     tvdays[1].setTextSize(30);
-	     tvdays[1].setGravity(Gravity.CENTER);
+	     
+	     //tvdays[1].setText();
+	     //tvdays[1].setTextSize(30);
+	     //tvdays[1].setGravity(Gravity.CENTER);
 	     //tvdays[2].setText("  TUESDAY  ");
 	     //tvdays[3].setText("  WEDNESDAY  ");
 	     //tvdays[4].setText("  THURSDAY  ");
 	     //tvdays[5].setText("  FRIDAY  ");
 	     //tvdays[6].setText("  SATURDAY  ");
 	     //tvdays[7].setText("  SUNDAY  ");
-	     for(int i = 0; i < 2; i++)
+	     for(int i = 0; i < 0; i++)
 	     {
-		     trdays.addView(tvdays[i]);
+		     //trdays.addView(tvdays[i]);
 	     }
 	     Schedule schedule = new Schedule();
 	     
@@ -393,7 +401,7 @@ public class MainActivity extends Activity {
 	  	       		}
 	  	       		
 	  	       		this.publishProgress(buffer.toString());
-	  	       		Thread.sleep(30000); // 30 seconds
+	  	       		Thread.sleep(5000); // 30 seconds
 	  			} catch (MalformedURLException e) {
 	  				Log.e("ERROR: doInBackground", "Invalid URL!");
 	  				e.printStackTrace();
@@ -405,7 +413,7 @@ public class MainActivity extends Activity {
 	  				e.printStackTrace();
 				}
 			}
-			BuildScheduleTable();
+			
 			return null;
 		}
 		

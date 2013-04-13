@@ -25,22 +25,11 @@ public class Schedule
 	public String[] items = new String[24];
 	
 	public void ParseSchedule(String day, String jsonstr)
-	{
-		JSONObject json;
-		try
-		{
-			json = new JSONObject(jsonstr);
-		}
-		catch (JSONException e)
-		{
-			Log.e("ERROR: ParseSchedule", "Error parsing JSON!");
-			e.printStackTrace();
-			return;
-		}
-		
+	{		
 		String[] sched = new String[24];
 		try
 		{
+			JSONObject json = new JSONObject(jsonstr);
 			JSONObject jobj = json.getJSONObject("schedule");
 			JSONObject jobjday = jobj.getJSONObject(day);
 			Iterator iter = jobjday.keys();
