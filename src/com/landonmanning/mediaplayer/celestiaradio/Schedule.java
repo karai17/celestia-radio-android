@@ -4,6 +4,8 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 
 import org.apache.http.HttpEntity;
@@ -22,7 +24,7 @@ import android.util.Log;
 
 public class Schedule
 {
-	public String[] items = new String[24];
+	public ScheduleEntry[] items = new ScheduleEntry[24];
 	
 	public void ParseSchedule(String day, String jsonstr)
 	{		
@@ -35,8 +37,11 @@ public class Schedule
 			Iterator iter = jobjday.keys();
 			for(int i = 0; i < 24; i++)
 			{
-				 items[i] = "   " + jobjday.getString((String) iter.next());
+				String Time = (String)iter.next();
+				String Name = jobjday.getString(Time);
+				items[i] = new ScheduleEntry(Time, Name);
 			}
+			Arrays.sort(items, new ScheduleComparator());
 		}
 		catch (JSONException e)
 		{
@@ -45,4 +50,11 @@ public class Schedule
 		}		
 	}
 	
+	class ScheduleComparator implements Comparator<ScheduleEntry> 
+	{
+	    public int compare(ScheduleEntry entry1, ScheduleEntry entry2)
+	    {
+	        return entry1.Time.compareTo(entry2.Time);
+	    }
 	}
+}

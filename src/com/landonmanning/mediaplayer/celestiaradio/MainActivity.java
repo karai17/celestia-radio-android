@@ -62,7 +62,7 @@ public class MainActivity extends Activity {
     private ImageView logo;							// Company logo
     private TextView artist, title, serverTitle, timetv;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
-    
+    private TableLayout scheduleTable;
     private NotificationCompat.Builder notificationBuilder = null;
     private NotificationManager mNotificationManager;
     private int NotificationId = 123454321;
@@ -70,6 +70,7 @@ public class MainActivity extends Activity {
 	private boolean isPlayerLoaded;
 	private Time t = new Time();
 	private String day = "Splorgday";
+	private String scheduleJSON = "";
 
 	/**
 	 * Create Activity
@@ -79,10 +80,26 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         
         MakeNotification();
+      //Get schedule JSON
+        RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
+		try {
+			scheduleJSON = scheduleGetter.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return;
+		}
+        
+
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
-        BuildScheduleTable();
+        
+		
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         //-- Prepare Variables --
         this.player			= new MediaPlayer();
@@ -103,7 +120,7 @@ public class MainActivity extends Activity {
     	
     	//-- Prepare Meta Task --
     	this.metaTask.execute(getString(R.string.stats));
-        
+    	
         t.timezone = "UTC";
         t.setToNow();
     	
@@ -131,7 +148,8 @@ public class MainActivity extends Activity {
 			public void onClick(View v) {
 				togglePlay();
 			}
-		});
+		});     
+        
     }
 	
     public void UpdateNotification()
@@ -237,6 +255,7 @@ public class MainActivity extends Activity {
 	 */
 	private void setMeta(JSONObject json) {
 		try {
+			BuildScheduleTable();
 			//-- Parse Top Level JSON --
 			String currentListeners		= json.getString("CURRENTLISTENERS");
 			String serverTitle			= json.getString("SERVERTITLE");
@@ -282,7 +301,7 @@ public class MainActivity extends Activity {
 			t.setToNow();
 			String timestr = day + ", " + String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
 			this.timetv.setText(timestr);
-			
+
 			if(isPlaying)
 				UpdateNotification();
 		} catch (JSONException e) {
@@ -294,6 +313,7 @@ public class MainActivity extends Activity {
 	private void BuildScheduleTable()
 	{
 		 TableLayout tl = (TableLayout)findViewById(R.id.scheduleTable);
+		 tl.removeAllViews();
 		 LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
 		 TableRow trdays = new TableRow(this);
 	     TextView[] tvdays = new TextView[8];
@@ -303,7 +323,6 @@ public class MainActivity extends Activity {
 	    	 tvdays[i].setLayoutParams(lp);
 	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
 	     }
-	     day = "";
 	     switch (t.weekDay) {
          case 0:  day = "Sunday";
                   break;
@@ -320,52 +339,30 @@ public class MainActivity extends Activity {
          case 6:  day = "Saturday";
                   break;
 	     }     
+	     Schedule schedule = new Schedule();     
+		
+	     schedule.ParseSchedule(day, scheduleJSON);
 	     
-	     //tvdays[1].setText();
-	     //tvdays[1].setTextSize(30);
-	     //tvdays[1].setGravity(Gravity.CENTER);
-	     //tvdays[2].setText("  TUESDAY  ");
-	     //tvdays[3].setText("  WEDNESDAY  ");
-	     //tvdays[4].setText("  THURSDAY  ");
-	     //tvdays[5].setText("  FRIDAY  ");
-	     //tvdays[6].setText("  SATURDAY  ");
-	     //tvdays[7].setText("  SUNDAY  ");
-	     for(int i = 0; i < 0; i++)
-	     {
-		     //trdays.addView(tvdays[i]);
-	     }
-	     Schedule schedule = new Schedule();
-	     
-	     RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute(null);
-	     String jsonstr = "";
-		try {
-			jsonstr = scheduleGetter.get();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		}
-	     schedule.ParseSchedule(day, jsonstr);
 	     tl.addView(trdays, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
-		 for(int i = 5; i < 29; i++)
+		 for(int i = 0; i < 24; i++)
 		 {
 			 TableRow tr = new TableRow(this);
 		     TextView tvtime = new TextView(this);
 		     tvtime.setLayoutParams(lp);
-		     tvtime.setText(i%24 + ":00");
+		     tvtime.setText(schedule.items[i].Time);
 		     tvtime.setTextColor(Color.parseColor("#ff8000"));
+		     tvtime.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvtime);
 		     TextView tvEntry = new TextView(this);
 		     tvEntry.setLayoutParams(lp);
-		     tvEntry.setText(schedule.items[i%24]);
+		     tvEntry.setText("   " + schedule.items[i].Name);
 		     tvEntry.setTextColor(Color.parseColor("#ff8000"));
+		     tvEntry.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvEntry);
 		     tl.addView(tr, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
 		 } 
+	     Log.d("Notice", "End BuildScheduleTable");
+	     return;
 	}
 	
 	/**
