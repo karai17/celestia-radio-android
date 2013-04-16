@@ -25,6 +25,7 @@
 			android:gravity="center"
 			android:src="@drawable/logo" />
 
+				
 		<TextView
 			android:id="@+id/serverTitle"
 			android:layout_width="fill_parent"
@@ -37,7 +38,7 @@
 			android:marqueeRepeatLimit="marquee_forever"
 			android:scrollHorizontally="true"
 			android:singleLine="true"
-			android:textColor="#ff8000"
+			style="@style/TextStyle"
 			android:textSize="20dp" />
 
 		<LinearLayout
@@ -54,7 +55,7 @@
 				android:gravity="right"
 				android:singleLine="true"
 				android:text="@string/artist"
-				android:textColor="#ff8000"
+				style="@style/TextStyle"
 				android:textSize="20dp" />
 
 			<TextView
@@ -69,7 +70,7 @@
 				android:marqueeRepeatLimit="marquee_forever"
 				android:scrollHorizontally="true"
 				android:singleLine="true"
-				android:textColor="#ff8000"
+				style="@style/TextStyle"
 				android:textColorLink="#ff8000"
 				android:textSize="20dp" />
 		</LinearLayout>
@@ -88,7 +89,7 @@
 				android:gravity="right"
 				android:singleLine="true"
 				android:text="@string/title"
-				android:textColor="#ff8000"
+				style="@style/TextStyle"
 				android:textSize="20dp" />
 
 			<TextView
@@ -103,20 +104,50 @@
 				android:marqueeRepeatLimit="marquee_forever"
 				android:scrollHorizontally="true"
 				android:singleLine="true"
-				android:textColor="#ff8000"
+				style="@style/TextStyle"
 				android:textColorLink="#ff8000"
 				android:textSize="20dp" />
+
 		</LinearLayout>
+
+		
 
 		<ImageButton
 			android:id="@+id/togglePlay"
-			android:layout_width="100dp"
-			android:layout_height="100dp"
+			android:layout_width="65dp"
+			android:layout_height="65dp"
 			android:layout_gravity="center"
 			android:layout_margin="10dp"
 			android:background="@drawable/play"
 			android:contentDescription="@string/toggle" />
 
+		
+						<TextView
+		    android:id="@+id/timeanddate"
+		    android:layout_width="fill_parent"
+		    android:layout_height="wrap_content"
+		    android:gravity="center"
+		    style="@style/TextStyle"
+		    android:textSize="30dp"
+		    android:text="CLOCK" />
+						
+						
+			<ScrollView
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:scrollbars="vertical"
+    android:layout_weight="1">
+			<HorizontalScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+                  android:layout_width="wrap_content"
+                  android:scrollbars="horizontal"
+                  android:layout_height="wrap_content">
+	<TableLayout
+	    android:layout_width="wrap_content"
+	    android:layout_height="match_parent"
+	    android:id="@+id/scheduleTable" >
+	</TableLayout>
+	</HorizontalScrollView>
+</ScrollView>
 	</LinearLayout>
 
 </FrameLayout>

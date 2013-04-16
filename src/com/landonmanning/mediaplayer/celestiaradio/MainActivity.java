@@ -6,6 +6,8 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.concurrent.ExecutionException;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -15,7 +17,9 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.media.MediaPlayer.OnPreparedListener;
@@ -25,12 +29,16 @@ import android.os.Bundle;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.Html;
+import android.text.format.Time;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TableLayout;
+import android.widget.TableRow;
 import android.widget.TextView;
+import android.widget.TableRow.LayoutParams;
 
 /**
  * Celestia Radio Main Activity
@@ -42,14 +50,18 @@ public class MainActivity extends Activity {
     private MediaPlayer player;						// Media player
     private MetaTask metaTask;						// Async Task for continuous updating
     private ImageView logo;							// Company logo
-    private TextView artist, title, serverTitle;	// Artist & Title data
+    private TextView artist, title, serverTitle, timetv;	// Artist & Title data
     private ImageButton togglePlay;					// Play/Stop button
-    
+    private TableLayout scheduleTable;
     private NotificationCompat.Builder notificationBuilder = null;
     private NotificationManager mNotificationManager;
     private int NotificationId = 123454321;
 	private boolean isPlaying;
-	
+	private boolean isPlayerLoaded;
+	private Time t = new Time();
+	private String day = "Splorgday";
+	private String scheduleJSON = "";
+
 	/**
 	 * Create Activity
 	 */
@@ -59,9 +71,22 @@ public class MainActivity extends Activity {
         
         MakeNotification();
         
+        //Get schedule JSON
+        RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
+		try {
+			scheduleJSON = scheduleGetter.get();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			return;
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+			return;
+		}
+
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         
         //-- Prepare Variables --
         this.player			= new MediaPlayer();
@@ -71,7 +96,8 @@ public class MainActivity extends Activity {
         this.title			= (TextView) findViewById(R.id.title);
         this.serverTitle	= (TextView) findViewById(R.id.serverTitle);
         this.togglePlay		= (ImageButton) findViewById(R.id.togglePlay);
-
+        timetv = (TextView) findViewById(R.id.timeanddate);
+        
         //-- Make Links Clickable --
         this.artist.setMovementMethod(LinkMovementMethod.getInstance());
         this.title.setMovementMethod(LinkMovementMethod.getInstance());
@@ -82,10 +108,12 @@ public class MainActivity extends Activity {
     	
     	//-- Prepare Meta Task --
     	this.metaTask.execute(getString(R.string.stats));
-        
+    	
+        t.timezone = "UTC";
+        t.setToNow();
+    	
     	//-- Prepare MediaPlayer --
         this.player.setOnPreparedListener(new OnPreparedListener() {
-			@SuppressWarnings("deprecation")
 			public void onPrepared(MediaPlayer mp) {
 				mp.start();
 				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
@@ -108,11 +136,11 @@ public class MainActivity extends Activity {
 			public void onClick(View v) {
 				togglePlay();
 			}
-		});
+		});     
+        
     }
 	
-    public void UpdateNotification()
-    {
+    public void UpdateNotification() {
     	if(notificationBuilder == null)
     	{
     		MakeNotification();
@@ -122,17 +150,16 @@ public class MainActivity extends Activity {
 		mNotificationManager.notify(NotificationId, notificationBuilder.build());
     }
     
-    private void ClearNotification()
-    {
+    private void ClearNotification() {
     	mNotificationManager.cancel(NotificationId);	
     }
     
     private void MakeNotification() {
-		notificationBuilder =
-				new NotificationCompat.Builder(this)
-				.setSmallIcon(R.drawable.ic_launcher);
-		Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
-		TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
+		 notificationBuilder =
+		        new NotificationCompat.Builder(this)
+		        .setSmallIcon(R.drawable.ic_launcher);
+		 Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
+		 TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
 		// Adds the Intent that starts the Activity to the top of the stack
 		stackBuilder.addNextIntent(notificationIntent);
 		PendingIntent resultPendingIntent =
@@ -169,8 +196,7 @@ public class MainActivity extends Activity {
 		}
 	}
 	@Override
-	protected void onDestroy()
-	{
+	protected void onDestroy() {
 		super.onDestroy();
 		this.ClearNotification();
 	}
@@ -178,7 +204,6 @@ public class MainActivity extends Activity {
 	/**
 	 * Toggle Play Button
 	 */
-	@SuppressWarnings("deprecation")
 	private void togglePlay() {
 		try {
 			if (!this.player.isPlaying()) {
@@ -186,6 +211,7 @@ public class MainActivity extends Activity {
 		    	this.player.setAudioStreamType(AudioManager.STREAM_MUSIC);
 				this.player.setDataSource(getString(R.string.address));
 				this.player.prepareAsync();
+				isPlayerLoaded = true;
 				this.player.start();
 				MainActivity.this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.stop));
 				UpdateNotification();
@@ -214,9 +240,10 @@ public class MainActivity extends Activity {
 	 */
 	private void setMeta(JSONObject json) {
 		try {
+			BuildScheduleTable();
+			
 			//-- Parse Top Level JSON --
 			String currentListeners		= json.getString("CURRENTLISTENERS");
-			String serverTitle			= json.getString("SERVERTITLE");
 			JSONArray songHistoryArray	= json.getJSONArray("SONGHISTORY");
 			String songHistory[][];
 			
@@ -252,15 +279,75 @@ public class MainActivity extends Activity {
 			}
 			
 			//-- Set Meta Data --
-			this.serverTitle.setText(currentListeners + " ponies tuned in to " + serverTitle + "!");
+			this.serverTitle.setText(currentListeners + " ponies tuned in!");
 			this.artist.setText(Html.fromHtml(songHistory[0][1] + songHistory[0][2]));
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
+			
+			t.setToNow();
+			String timestr = day + ", " + String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
+			this.timetv.setText(timestr);
+
 			if(isPlaying)
 				UpdateNotification();
 		} catch (JSONException e) {
 			Log.e("ERROR: setMeta", "Error parsing JSON!");
 			e.printStackTrace();
 		}
+	}
+	
+	private void BuildScheduleTable()
+	{
+		 TableLayout tl = (TableLayout)findViewById(R.id.scheduleTable);
+		 tl.removeAllViews();
+		 LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
+		 TableRow trdays = new TableRow(this);
+	     TextView[] tvdays = new TextView[8];
+	     for(int i = 0; i < 8; i++) {
+	    	 tvdays[i] = new TextView(this);
+	    	 tvdays[i].setLayoutParams(lp);
+	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
+	     }
+	     switch (t.weekDay) {
+         case 0:  day = "Sunday";
+                  break;
+         case 1:  day = "Monday";
+                  break;
+         case 2:  day = "Tuesday";
+                  break;
+         case 3:  day = "Wednesday";
+                  break;
+         case 4:  day = "Thursday";
+                  break;
+         case 5:  day = "Friday";
+                  break;
+         case 6:  day = "Saturday";
+                  break;
+	     }     
+	     Schedule schedule = new Schedule();     
+		
+	     schedule.ParseSchedule(day, scheduleJSON);
+	     
+	     tl.addView(trdays, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+		 for(int i = 0; i < 24; i++) {
+			 TableRow tr = new TableRow(this);
+		     TextView tvtime = new TextView(this);
+		     tvtime.setLayoutParams(lp);
+		     tvtime.setText(schedule.items[i].Time);
+		     tvtime.setTextColor(Color.parseColor("#ff8000"));
+		     tvtime.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
+		     tr.addView(tvtime);
+		     TextView tvEntry = new TextView(this);
+		     tvEntry.setLayoutParams(lp);
+		     tvEntry.setText("   " + schedule.items[i].Name);
+		     tvEntry.setTextColor(Color.parseColor("#ff8000"));
+		     tvEntry.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
+		     tr.addView(tvEntry);
+		     tl.addView(tr, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+		 } 
+		 
+	     Log.d("Notice", "End BuildScheduleTable");
+	     
+	     return;
 	}
 	
 	/**
@@ -297,7 +384,7 @@ public class MainActivity extends Activity {
 	  	       		}
 	  	       		
 	  	       		this.publishProgress(buffer.toString());
-	  	       		Thread.sleep(30000); // 30 seconds
+	  	       		Thread.sleep(5000); // 30 seconds
 	  			} catch (MalformedURLException e) {
 	  				Log.e("ERROR: doInBackground", "Invalid URL!");
 	  				e.printStackTrace();

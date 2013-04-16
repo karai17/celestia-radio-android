@@ -8,6 +8,7 @@
 	<string name="artist">Artist:</string>
 	<string name="title">Title:</string>
 	<string name="stats">http://twilight-sparkle.ponify.me/stats.php</string>
+	<string name="schedule">http://www.ponify.me/schedule.json.php</string>
 	<string name="background">Molestia sees all!</string>
 	<string name="website">http://ponify.me/</string>
 
