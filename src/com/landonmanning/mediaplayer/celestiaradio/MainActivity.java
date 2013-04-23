@@ -6,6 +6,11 @@ import java.io.Reader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 import org.json.JSONArray;
@@ -13,6 +18,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.RecentTaskInfo;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
@@ -32,6 +39,7 @@ import android.text.Html;
 import android.text.format.Time;
 import android.text.method.LinkMovementMethod;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -39,13 +47,15 @@ import android.widget.TableLayout;
 import android.widget.TableRow;
 import android.widget.TextView;
 import android.widget.TableRow.LayoutParams;
-
 /**
  * Celestia Radio Main Activity
  * @author Landon "Karai" Manning
  * @email LManning17@gmail.com
  *
  */
+
+
+
 public class MainActivity extends Activity {
     private MediaPlayer player;						// Media player
     private MetaTask metaTask;						// Async Task for continuous updating
@@ -70,24 +80,16 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         
         MakeNotification();
+      //Get schedule JSON
+        scheduleJSON = GetScheduleJSON();
         
-        //Get schedule JSON
-        RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
-		try {
-			scheduleJSON = scheduleGetter.get();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			return;
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-			return;
-		}
 
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         
+		
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         //-- Prepare Variables --
         this.player			= new MediaPlayer();
         this.metaTask		= new MetaTask();
@@ -97,7 +99,6 @@ public class MainActivity extends Activity {
         this.serverTitle	= (TextView) findViewById(R.id.serverTitle);
         this.togglePlay		= (ImageButton) findViewById(R.id.togglePlay);
         timetv = (TextView) findViewById(R.id.timeanddate);
-        
         //-- Make Links Clickable --
         this.artist.setMovementMethod(LinkMovementMethod.getInstance());
         this.title.setMovementMethod(LinkMovementMethod.getInstance());
@@ -140,7 +141,8 @@ public class MainActivity extends Activity {
         
     }
 	
-    public void UpdateNotification() {
+    public void UpdateNotification()
+    {
     	if(notificationBuilder == null)
     	{
     		MakeNotification();
@@ -150,7 +152,8 @@ public class MainActivity extends Activity {
 		mNotificationManager.notify(NotificationId, notificationBuilder.build());
     }
     
-    private void ClearNotification() {
+    private void ClearNotification()
+    {
     	mNotificationManager.cancel(NotificationId);	
     }
     
@@ -196,7 +199,8 @@ public class MainActivity extends Activity {
 		}
 	}
 	@Override
-	protected void onDestroy() {
+	protected void onDestroy()
+	{
 		super.onDestroy();
 		this.ClearNotification();
 	}
@@ -241,9 +245,9 @@ public class MainActivity extends Activity {
 	private void setMeta(JSONObject json) {
 		try {
 			BuildScheduleTable();
-			
 			//-- Parse Top Level JSON --
 			String currentListeners		= json.getString("CURRENTLISTENERS");
+			String serverTitle			= json.getString("SERVERTITLE");
 			JSONArray songHistoryArray	= json.getJSONArray("SONGHISTORY");
 			String songHistory[][];
 			
@@ -284,7 +288,7 @@ public class MainActivity extends Activity {
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
 			
 			t.setToNow();
-			String timestr = day + ", " + String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
+			String timestr = String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
 			this.timetv.setText(timestr);
 
 			if(isPlaying)
@@ -295,6 +299,24 @@ public class MainActivity extends Activity {
 		}
 	}
 	
+	private String GetScheduleJSON()
+	{
+		String ret = "";
+		RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
+		try {
+			ret = scheduleGetter.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return "ERROR";
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return "ERROR";
+		}
+		return ret;
+	}
+	
 	private void BuildScheduleTable()
 	{
 		 TableLayout tl = (TableLayout)findViewById(R.id.scheduleTable);
@@ -302,11 +324,14 @@ public class MainActivity extends Activity {
 		 LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
 		 TableRow trdays = new TableRow(this);
 	     TextView[] tvdays = new TextView[8];
-	     for(int i = 0; i < 8; i++) {
+	     for(int i = 0; i < 8; i++)
+	     {
 	    	 tvdays[i] = new TextView(this);
 	    	 tvdays[i].setLayoutParams(lp);
 	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
 	     }
+	     t.timezone = "EST";
+	     t.setToNow();
 	     switch (t.weekDay) {
          case 0:  day = "Sunday";
                   break;
@@ -323,30 +348,37 @@ public class MainActivity extends Activity {
          case 6:  day = "Saturday";
                   break;
 	     }     
+	     t.timezone = "UTC";
 	     Schedule schedule = new Schedule();     
 		
-	     schedule.ParseSchedule(day, scheduleJSON);
-	     
+	     if(scheduleJSON != "ERROR" && scheduleJSON != "")
+	     {
+	    	 schedule.ParseSchedule(day, scheduleJSON);
+	     }
+	     else
+	     {
+	    	 scheduleJSON = GetScheduleJSON();
+	    	 return;
+	     }
 	     tl.addView(trdays, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
-		 for(int i = 0; i < 24; i++) {
+		 for(int i = 5; i < 29; i++)
+		 {
 			 TableRow tr = new TableRow(this);
 		     TextView tvtime = new TextView(this);
 		     tvtime.setLayoutParams(lp);
-		     tvtime.setText(schedule.items[i].Time);
+		     tvtime.setText(schedule.items[i%24].Time);
 		     tvtime.setTextColor(Color.parseColor("#ff8000"));
 		     tvtime.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvtime);
 		     TextView tvEntry = new TextView(this);
 		     tvEntry.setLayoutParams(lp);
-		     tvEntry.setText("   " + schedule.items[i].Name);
+		     tvEntry.setText("   " + schedule.items[i%24].Name);
 		     tvEntry.setTextColor(Color.parseColor("#ff8000"));
 		     tvEntry.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvEntry);
 		     tl.addView(tr, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
 		 } 
-		 
 	     Log.d("Notice", "End BuildScheduleTable");
-	     
 	     return;
 	}
 	
@@ -369,7 +401,6 @@ public class MainActivity extends Activity {
 	  	       		//-- Connect to and read Meta Data page --
 	  	       		URLConnection con = new URL(address[0]).openConnection();
 	  	       		Reader r = new InputStreamReader(con.getInputStream());
-	  	       		
 	  	       		//-- Build JSON String --
 	  	       		StringBuilder buffer = new StringBuilder();
 	  	       		int ch;
