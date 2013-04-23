@@ -81,18 +81,7 @@ public class MainActivity extends Activity {
         
         MakeNotification();
       //Get schedule JSON
-        RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
-		try {
-			scheduleJSON = scheduleGetter.get();
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		} catch (ExecutionException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-			return;
-		}
+        scheduleJSON = GetScheduleJSON();
         
 
         //-- System Stuff --
@@ -299,7 +288,7 @@ public class MainActivity extends Activity {
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
 			
 			t.setToNow();
-			String timestr = day + ", " + String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
+			String timestr = String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
 			this.timetv.setText(timestr);
 
 			if(isPlaying)
@@ -308,6 +297,24 @@ public class MainActivity extends Activity {
 			Log.e("ERROR: setMeta", "Error parsing JSON!");
 			e.printStackTrace();
 		}
+	}
+	
+	private String GetScheduleJSON()
+	{
+		String ret = "";
+		RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
+		try {
+			ret = scheduleGetter.get();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return "ERROR";
+		} catch (ExecutionException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			return "ERROR";
+		}
+		return ret;
 	}
 	
 	private void BuildScheduleTable()
@@ -323,6 +330,8 @@ public class MainActivity extends Activity {
 	    	 tvdays[i].setLayoutParams(lp);
 	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
 	     }
+	     t.timezone = "EST";
+	     t.setToNow();
 	     switch (t.weekDay) {
          case 0:  day = "Sunday";
                   break;
@@ -339,23 +348,31 @@ public class MainActivity extends Activity {
          case 6:  day = "Saturday";
                   break;
 	     }     
+	     t.timezone = "UTC";
 	     Schedule schedule = new Schedule();     
 		
-	     schedule.ParseSchedule(day, scheduleJSON);
-	     
+	     if(scheduleJSON != "ERROR" && scheduleJSON != "")
+	     {
+	    	 schedule.ParseSchedule(day, scheduleJSON);
+	     }
+	     else
+	     {
+	    	 scheduleJSON = GetScheduleJSON();
+	    	 return;
+	     }
 	     tl.addView(trdays, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
-		 for(int i = 0; i < 24; i++)
+		 for(int i = 5; i < 29; i++)
 		 {
 			 TableRow tr = new TableRow(this);
 		     TextView tvtime = new TextView(this);
 		     tvtime.setLayoutParams(lp);
-		     tvtime.setText(schedule.items[i].Time);
+		     tvtime.setText(schedule.items[i%24].Time);
 		     tvtime.setTextColor(Color.parseColor("#ff8000"));
 		     tvtime.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvtime);
 		     TextView tvEntry = new TextView(this);
 		     tvEntry.setLayoutParams(lp);
-		     tvEntry.setText("   " + schedule.items[i].Name);
+		     tvEntry.setText("   " + schedule.items[i%24].Name);
 		     tvEntry.setTextColor(Color.parseColor("#ff8000"));
 		     tvEntry.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvEntry);
