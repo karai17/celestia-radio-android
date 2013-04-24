@@ -72,17 +72,7 @@ public class MainActivity extends Activity {
         MakeNotification();
         
         //Get schedule JSON
-        RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
-		try {
-			scheduleJSON = scheduleGetter.get();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-			return;
-		} catch (ExecutionException e) {
-			e.printStackTrace();
-			return;
-		}
-
+        
         //-- System Stuff --
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setContentView(R.layout.main);
@@ -96,7 +86,8 @@ public class MainActivity extends Activity {
         this.title			= (TextView) findViewById(R.id.title);
         this.serverTitle	= (TextView) findViewById(R.id.serverTitle);
         this.togglePlay		= (ImageButton) findViewById(R.id.togglePlay);
-        timetv = (TextView) findViewById(R.id.timeanddate);
+        this.timetv			= (TextView) findViewById(R.id.timeanddate);
+        this.scheduleJSON	= GetScheduleJSON();
         
         //-- Make Links Clickable --
         this.artist.setMovementMethod(LinkMovementMethod.getInstance());
@@ -109,8 +100,9 @@ public class MainActivity extends Activity {
     	//-- Prepare Meta Task --
     	this.metaTask.execute(getString(R.string.stats));
     	
-        t.timezone = "UTC";
-        t.setToNow();
+    	//-- Prepare Timezone --
+        this.t.timezone = "UTC";
+        this.t.setToNow();
     	
     	//-- Prepare MediaPlayer --
         this.player.setOnPreparedListener(new OnPreparedListener() {
@@ -141,37 +133,36 @@ public class MainActivity extends Activity {
     }
 	
     public void UpdateNotification() {
-    	if(notificationBuilder == null)
-    	{
+    	if(this.notificationBuilder == null) {
     		MakeNotification();
     	}
-    	notificationBuilder.setContentTitle(title.getText().toString());
-    	notificationBuilder.setContentText(artist.getText().toString());
-		mNotificationManager.notify(NotificationId, notificationBuilder.build());
+    	
+    	this.notificationBuilder.setContentTitle(this.title.getText().toString());
+    	this.notificationBuilder.setContentText(this.artist.getText().toString());
+    	this.mNotificationManager.notify(this.NotificationId, this.notificationBuilder.build());
     }
     
     private void ClearNotification() {
-    	mNotificationManager.cancel(NotificationId);	
+    	this.mNotificationManager.cancel(this.NotificationId);	
     }
     
     private void MakeNotification() {
-		 notificationBuilder =
+    	this.notificationBuilder =
 		        new NotificationCompat.Builder(this)
 		        .setSmallIcon(R.drawable.ic_launcher);
-		 Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
-		 TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
+		Intent notificationIntent = new Intent(getApplicationContext(), NotificationActivity.class);
+		TaskStackBuilder stackBuilder = TaskStackBuilder.create(getApplicationContext());
+		
 		// Adds the Intent that starts the Activity to the top of the stack
 		stackBuilder.addNextIntent(notificationIntent);
-		PendingIntent resultPendingIntent =
-		        stackBuilder.getPendingIntent(
-		            0,
-		            PendingIntent.FLAG_UPDATE_CURRENT
-		        );
-		notificationBuilder.setContentIntent(resultPendingIntent);
-
-	    mNotificationManager =
-		    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		notificationBuilder.setOngoing(true);	
+		PendingIntent resultPendingIntent = stackBuilder.getPendingIntent(
+		    0,
+		    PendingIntent.FLAG_UPDATE_CURRENT
+		);
+		
+		this.notificationBuilder.setContentIntent(resultPendingIntent);
+		this.mNotificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+		this.notificationBuilder.setOngoing(true);	
 	}
 
 	/**
@@ -195,6 +186,10 @@ public class MainActivity extends Activity {
 			this.player.release();
 		}
 	}
+	
+	/**
+	 * Destroy Activity
+	 */
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
@@ -217,7 +212,6 @@ public class MainActivity extends Activity {
 				UpdateNotification();
 			} else {
 				isPlaying = false;
-				//this.player.pause();
 				this.player.reset();
 				this.togglePlay.setBackgroundDrawable(getResources().getDrawable(R.drawable.play));
 				ClearNotification();
@@ -284,7 +278,7 @@ public class MainActivity extends Activity {
 			this.title.setText(Html.fromHtml(songHistory[0][3] + songHistory[0][4]));
 			
 			t.setToNow();
-			String timestr = day + ", " + String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
+			String timestr = String.format("%02d", t.hour) + ":" + String.format("%02d", t.minute) + " UTC";
 			this.timetv.setText(timestr);
 
 			if(isPlaying)
@@ -295,58 +289,86 @@ public class MainActivity extends Activity {
 		}
 	}
 	
-	private void BuildScheduleTable()
-	{
+	private String GetScheduleJSON() {
+		String ret = "";
+		RetrieveScheduleTask scheduleGetter = (RetrieveScheduleTask) new RetrieveScheduleTask().execute((Void)null);
+		try {
+			ret = scheduleGetter.get();
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+			return "ERROR";
+		} catch (ExecutionException e) {
+			e.printStackTrace();
+			return "ERROR";
+		}
+		return ret;
+	}
+	
+	private void BuildScheduleTable() {
 		 TableLayout tl = (TableLayout)findViewById(R.id.scheduleTable);
 		 tl.removeAllViews();
 		 LayoutParams lp = new LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT);
 		 TableRow trdays = new TableRow(this);
 	     TextView[] tvdays = new TextView[8];
+	     
 	     for(int i = 0; i < 8; i++) {
 	    	 tvdays[i] = new TextView(this);
 	    	 tvdays[i].setLayoutParams(lp);
 	    	 tvdays[i].setTextColor(Color.parseColor("#ff8000"));
 	     }
-	     switch (t.weekDay) {
-         case 0:  day = "Sunday";
+	     
+	     this.t.timezone = "EST";
+	     this.t.setToNow();
+	     
+	     switch (this.t.weekDay) {
+         case 0:  this.day = "Sunday";
                   break;
-         case 1:  day = "Monday";
+         case 1:  this.day = "Monday";
                   break;
-         case 2:  day = "Tuesday";
+         case 2:  this.day = "Tuesday";
                   break;
-         case 3:  day = "Wednesday";
+         case 3:  this.day = "Wednesday";
                   break;
-         case 4:  day = "Thursday";
+         case 4:  this.day = "Thursday";
                   break;
-         case 5:  day = "Friday";
+         case 5:  this.day = "Friday";
                   break;
-         case 6:  day = "Saturday";
+         case 6:  this.day = "Saturday";
                   break;
-	     }     
+	     }   
+	     
+	     this.t.timezone = "UTC";
 	     Schedule schedule = new Schedule();     
 		
-	     schedule.ParseSchedule(day, scheduleJSON);
+	     if(this.scheduleJSON != "ERROR" && this.scheduleJSON != "") {
+	    	 schedule.ParseSchedule(this.day, this.scheduleJSON);
+	     } else {
+	    	 this.scheduleJSON = GetScheduleJSON();
+	    	 return;
+	     }
 	     
 	     tl.addView(trdays, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
-		 for(int i = 0; i < 24; i++) {
+		 
+	     for(int i = 5; i < 29; i++) {
 			 TableRow tr = new TableRow(this);
+			 
 		     TextView tvtime = new TextView(this);
 		     tvtime.setLayoutParams(lp);
-		     tvtime.setText(schedule.items[i].Time);
+		     tvtime.setText(schedule.items[i%24].Time);
 		     tvtime.setTextColor(Color.parseColor("#ff8000"));
 		     tvtime.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
 		     tr.addView(tvtime);
+		     
 		     TextView tvEntry = new TextView(this);
 		     tvEntry.setLayoutParams(lp);
-		     tvEntry.setText("   " + schedule.items[i].Name);
+		     tvEntry.setText("   " + schedule.items[i%24].Name);
 		     tvEntry.setTextColor(Color.parseColor("#ff8000"));
 		     tvEntry.setShadowLayer(1.0f, 1.0f, 1.0f, Color.parseColor("#555555"));
+		     
 		     tr.addView(tvEntry);
 		     tl.addView(tr, new TableLayout.LayoutParams(LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
 		 } 
-		 
 	     Log.d("Notice", "End BuildScheduleTable");
-	     
 	     return;
 	}
 	
